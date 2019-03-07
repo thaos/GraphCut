@@ -30,6 +30,8 @@ patch_A_id <- canvas_id[25:32, 1:32]
 patch_A_id_local <- matrix(1:length(patch_A), ncol = ncol(patch_A), nrow = nrow(patch_A))
 plot(patch_A, patch_A_id_local)
 
+patch_list <- data.frame(name = "A", patch = I(list(patch_A)), patch_id = I(list(patch_A_id)))
+
 # search for image B by scanning
 ij_scan <- expand.grid(i = 1:(128 - 31), j = 1:(128 - 31))
 ij_scan <- subset(ij_scan, !(i <= 32 & j <= 32)) 
@@ -45,6 +47,14 @@ img_B <- with(ij_scan[imin, ], img[i:(i+31), j:(j+31)])
 img_B_id <- canvas_id[25:(25 + 31), 1:32]
 patch_B <- img_B[1:8, 1:32]
 diff_AB <- abs(patch_A - patch_B)
+
+add_patch_to_list <- function(patch_list, name, patch, patch_id){
+  rbind(
+    patch_list,
+    data.frame(name = name, patch = I(list(patch)), patch_id = I(list(patch_id)))
+  )
+}
+patch_list <- add_patch_to_list(patch_list = patch_list, name = "B", patch = patch_B, patch_id = patch_A_id)
 
 # create patch graph
 # alway the same for patch of same size
@@ -83,31 +93,39 @@ cutset_global <- local_to_global_arcs(cutset_local, patch_A_id)
 cutset_global <- rearrange_node(cutset_global)
 
 # getting the combined patch
-patched <- patch_A
-patched_origin <- matrix(1, nrow = nrow(patch_A), ncol = ncol(patch_A))
-tcut <- mincut$t.cut[mincut$t.cut <= length(patch_A)]
-patched[tcut] <- patch_B[tcut]
-patched_origin[tcut] <- 2
-
-
 patched <- assemble_patch(mincut = mincut, patch_A = patch_A, patch_B = patch_B, patch_id = patch_A_id)
 
-# opposite patch
-opposite_patched <- assemble_opposite_patch(mincut = mincut, patch_A = patch_A, patch_B = patch_B, patch_id = patch_A_id)
+assemble_patch_origin <- function(mincut, label_B,  patch_origin, patch_id){
+  patched_origin <- patch_origin
+  tcut <- mincut$t.cut[mincut$t.cut <= length(patch_id)]
+  patched_origin[tcut] <- label_B
+  return(patched_origin)
+}
 
-  
+patch_origin <- patch_A_id
+patch_origin[] <- "A"
+patched_origin <- assemble_patch_origin(mincut = mincut, label_B = "B", patch_origin = patch_origin, patch_id = patch_A_id)  
+image(matrix(as.numeric(factor(patched_origin)), ncol = ncol(canvas)))
 
 canvas <- update_canvas(canvas = canvas, img_B = img_B, img_B_id = img_B_id, patched = patched, patched_id = patch_A_id) 
-opposite_canvas <- update_opposite_canvas(opposite_canvas = opposite_canvas, opposite_patched = opposite_patched, patched_id = patch_A_id)
 
+# adding patches to the canvas
+update_canvas_origin <- function(canvas_origin, label, img_id, patched_origin = NULL, patched_id = NULL){
+  canvas_origin[img_id] <- label
+  if(!is.null(patched_origin) & !is.null(patched_id)){
+    canvas_origin[patched_id] <- patched_origin
+  }
+  return(canvas_origin)
+}
 
-canvas_origin[img_B_id] <- 2
-canvas_origin[patch_A_id] <- patched_origin
+canvas_origin <- update_canvas_origin(canvas_origin = canvas_origin, label = "A", img_id = img_A_id)
+canvas_origin <- update_canvas_origin(canvas_origin = canvas_origin, label = "B", img_id = img_B_id, patched_origin = patched_origin, patched_id = patch_A_id)
+
 par(mfrow = c(1, 1))
 image(
   x = seq.int(nrow(canvas)),
   y = seq.int(ncol(canvas)),
-  z = canvas_origin
+  z = matrix(as.numeric(factor(canvas_origin)), ncol = ncol(canvas))
 )
 
 par(mfrow = c(1, 1))
@@ -138,12 +156,17 @@ imin <- which.min(dmat)
 img_C <- with(ij_scan[imin, ], img[i:(i+31), j:(j+31)])
 img_C_id <- canvas_id[25:(25 + 31), 1:32]
 patch_C <- img_C[1:8, 1:32]
+
+patch_list <- add_patch_to_list(patch_list = patch_list, name = "C", patch = patch_C, patch_id = patch_A_id)
+
 diff_ABC <- abs(patch_AB - patch_C)
 par(mfrow = c(3, 1))
 image(patch_AB, col = rev(grey.colors(256)), zlim = c(0, 256))
 image(patch_C, col = rev(grey.colors(256)), zlim = c(0, 256))
 image(abs(diff_ABC), col = rev(grey.colors(256)), zlim = c(0, 256))
 image(abs(patch_B - patch_C), col = rev(grey.colors(256)), zlim = c(0, 256))
+
+
 
 # generate graph data
 arcs_newpatch <- create_arcs(diff_patch = diff_ABC)
@@ -168,8 +191,8 @@ cut_1 <- cutset_global[1, ]
 arcs_newpatch_updated <- update_graph_with_cuts(
   cutset_global = cutset_global,
   patch = patch_C, patch_id = patch_AB_id,
-  canvas = canvas, opposite_canvas = opposite_canvas,
-  arcs = arcs_newpatch
+  canvas = canvas, canvas_origin =  canvas_origin,
+  patch_list = patch_list, arcs = arcs_newpatch
 )
 arcs_newpatch_updated <- reorder_nodes(arcs_newpatch_updated)
 
@@ -196,11 +219,12 @@ head(arcs_newpatch_updated)
 
 
 patched <- assemble_patch(mincut = mincut, patch_A = patch_AB, patch_B = patch_C, patch_id = patch_AB_id)
-par(mfrow = c(3, 1))
+patched_origin <- assemble_patch_origin(mincut = mincut, label_B = "C", patch_origin = patched_origin, patch_id = patch_A_id)  
+par(mfrow = c(2, 2))
 image(patch_AB, col = grey.colors(256), zlim = c(0, 256))
 image(patch_C, col = grey.colors(256), zlim = c(0, 256))
 image(patched, col = grey.colors(256), zlim = c(0, 256))
-
+image(matrix(as.numeric(factor(patched_origin)), ncol = ncol(canvas)))
 
 par(mfrow = c(2, 1))
 image(
@@ -215,10 +239,8 @@ lines_seams(cutset_global = cutset_global, canvas = canvas)
 cutset_global <- update_cutset_global(arcs_newpatch_updated, cutset_local = cutset_local, cutset_global =  cutset_global, patch_id = patch_AB_id)
 
 
-opposite_patched <- assemble_opposite_patch(mincut = mincut, patch_A = patch_AB, patch_B = patch_C, patch_id = patch_AB_id)
 canvas <- update_canvas(canvas = canvas, img_B = img_C, img_B_id = img_C_id, patched = patched, patched_id = patch_AB_id) 
-opposite_canvas <- update_opposite_canvas(opposite_canvas = opposite_canvas, opposite_patched = opposite_patched, patched_id = patch_AB_id)
-  
+canvas_origin <- update_canvas_origin(canvas_origin = canvas_origin, label = "C", img_id = img_C_id, patched_origin = patched_origin, patched_id = patch_A_id)  
 
 image(
   x = seq.int(nrow(canvas)),
@@ -231,7 +253,7 @@ lines_seams(cutset_global = cutset_global, canvas = canvas)
 image(
   x = seq.int(nrow(canvas)),
   y = seq.int(ncol(canvas)),
-  z = opposite_canvas,
-  col = grey.colors(256), zlim = c(0, 256)
+  z = matrix(as.numeric(factor(canvas_origin)), ncol = ncol(canvas)),
 )
 lines_seams(cutset_global = cutset_global, canvas = canvas)
+

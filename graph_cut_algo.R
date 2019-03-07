@@ -131,14 +131,24 @@ check_oldseam_in_patch <- function(cut, patch_id){
   (cut[1] %in% patch_id & cut[2] %in% patch_id)
 }
 
-compute_oldseam_weight1 <- function(cut, patch, patch_id, canvas, opposite_canvas){
-  abs(canvas[cut[1]] - patch[patch_id == cut[1]]) + abs(opposite_canvas[cut[2]] - patch[patch_id == cut[2]])
+compute_oldseam_weight1 <- function(cut, patch, patch_id, canvas, canvas_origin, patch_list){
+  val_cut1 <- canvas[cut[1]]
+  patch1 <- canvas_origin[cut[1]]
+  ipatch1 <- which(patch_list$name == patch1)
+  val_cut2 <- patch_list$patch[[ipatch1]][patch_list$patch_id[[ipatch1]] == cut[2]]
+  abs(val_cut1 - patch[patch_id == cut[1]]) +  abs(val_cut2 - patch[patch_id == cut[2]])
 }
-compute_oldseam_weight2 <- function(cut, patch, patch_id, canvas, opposite_canvas){
-  abs(canvas[cut[2]] - patch[patch_id == cut[2]]) + abs(opposite_canvas[cut[1]] - patch[patch_id == cut[1]])
+# debug(compute_oldseam_weight1)
+compute_oldseam_weight2 <- function(cut, patch, patch_id, canvas, canvas_origin, patch_list){
+  val_cut2 <- canvas[cut[]]
+  patch2 <- canvas_origin[cut[2]]
+  ipatch2 <- which(patch_list$name == patch2)
+  val_cut1 <- patch_list$patch[[ipatch2]][patch_list$patch_id[[ipatch2]] == cut[1]]
+  abs(val_cut2 - patch[patch_id == cut[2]]) +  abs(val_cut1 - patch[patch_id == cut[1]])
 }
+# debug(compute_oldseam_weight1)
 
-add_oldcut <- function(cut, patch, patch_id, canvas, opposite_canvas, arcs){
+add_oldcut <- function(cut, patch, patch_id, canvas, canvas_origin, patch_list, arcs){
   patch_id_local <- matrix(
     seq.int(length(patch_id)),
     nrow = nrow(patch_id),
@@ -154,20 +164,20 @@ add_oldcut <- function(cut, patch, patch_id, canvas, opposite_canvas, arcs){
   arcs[iseam, 1:2] <- c(length(patch_id) + 2, nodeseam_id)
   arcs <- rbind(
     arcs,
-    c(node1, nodeseam_id, compute_oldseam_weight1(cut = cut, patch = patch, patch_id = patch_id, canvas = canvas, opposite_canvas = opposite_canvas)),
-    c(node2, nodeseam_id, compute_oldseam_weight2(cut = cut, patch = patch, patch_id = patch_id, canvas = canvas, opposite_canvas = opposite_canvas))
+    c(node1, nodeseam_id, compute_oldseam_weight1(cut = cut, patch = patch, patch_id = patch_id, canvas = canvas, canvas_origin = canvas_origin, patch_list = patch_list)),
+    c(node2, nodeseam_id, compute_oldseam_weight2(cut = cut, patch = patch, patch_id = patch_id, canvas = canvas, canvas_origin = canvas_origin, patch_list = patch_list))
   )
   return(arcs)
 }
 
-update_graph_with_cuts <- function(cutset_global, patch, patch_id, canvas, opposite_canvas, arcs){
+update_graph_with_cuts <- function(cutset_global, patch, patch_id, canvas, canvas_origin, patch_list, arcs){
   for(i in seq.int(nrow(cutset_global))){
-    if(check_oldseam_in_patch(cut = cutset_global[i, ], patch_id = patch_AB_id)){
+    if(check_oldseam_in_patch(cut = cutset_global[i, ], patch_id = patch_id)){
       arcs <- add_oldcut(
         cut = cutset_global[i, ],
         patch = patch, patch_id = patch_id,
-        canvas = canvas, opposite_canvas = opposite_canvas,
-        arcs = arcs
+        canvas = canvas, canvas_origin = canvas_origin,
+        patch_list = patch_list, arcs = arcs
       )
     }
   }
