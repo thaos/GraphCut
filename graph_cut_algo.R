@@ -19,38 +19,38 @@ get_adjacent_gridpoints(8*5, ni = 8, nj = 5)
 get_adjacent_gridpoints(8*5 - 7, ni = 8, nj = 5)
 get_adjacent_gridpoints(20, ni = 8, nj = 5)
 
-create_egdes <- function(idx, diff_patch){
-  adj <- get_adjacent_gridpoints(idx, ni = nrow(diff_patch), nj = ncol(diff_patch))
+create_egdes <- function(idx, diff_overlap){
+  adj <- get_adjacent_gridpoints(idx, ni = nrow(diff_overlap), nj = ncol(diff_overlap))
   # adj <- adj[adj > idx]
-  weight <- diff_patch[idx] + diff_patch[adj]
+  weight <- diff_overlap[idx] + diff_overlap[adj]
   data.frame(from = idx, to = adj, weight = weight)
 }
 
-add_source_to_left <- function(patch_id){
-  idx_source <- 1 + (seq.int(ncol(patch_id)) - 1) * nrow(patch_id)
-  idx_sink <-  seq.int(ncol(patch_id)) * nrow(patch_id) 
+add_source_to_left <- function(overlap_id){
+  idx_source <- 1 + (seq.int(ncol(overlap_id)) - 1) * nrow(overlap_id)
+  idx_sink <-  seq.int(ncol(overlap_id)) * nrow(overlap_id) 
   arcs <- rbind( 
-    data.frame(from = length(patch_id) + 1, to = idx_source, weight = 10E6),
-    data.frame(from = length(patch_id) + 2, to = idx_sink, weight = 10E6)
+    data.frame(from = length(overlap_id) + 1, to = idx_source, weight = 10E6),
+    data.frame(from = length(overlap_id) + 2, to = idx_sink, weight = 10E6)
   )
   return(arcs)
 }
 
-create_arcs <- function(diff_patch){
+create_arcs <- function(diff_overlap){
   arcs <- lapply(
-    1:length(diff_patch),
+    1:length(diff_overlap),
     create_egdes,
-    diff_patch = diff_patch
+    diff_overlap = diff_overlap
   ) %>%
     do.call(rbind, .) %>%
     subset(from < to)
 }
 
 # Add Source and Sink#
-add_sink_and_source <- function(arcs, patch_id, add_source = add_source_to_left){
+add_sink_and_source <- function(arcs, overlap_id, add_source = add_source_to_left){
   arcs_with_ST <- rbind(
     arcs,
-    add_source(patch_id)
+    add_source(overlap_id)
   )
 }
 
@@ -76,38 +76,50 @@ rearrange_node <- function(cutset){
   return(cutset)
 }
 
-local_to_global_arcs <- function(arcs_local, patch_id){
+local_to_global_arcs <- function(arcs_local, overlap_id){
   arcs_global <- arcs_local
-  arcs_global[, 1:2] <- patch_id[c(arcs_local[, 1:2])]
+  arcs_global[, 1:2] <- overlap_id[c(arcs_local[, 1:2])]
   return(arcs_global)
 }
 
-assemble_patch <- function(mincut, patch_A, patch_B, patch_id){
-  patched <- patch_A
-  tcut <- mincut$t.cut[mincut$t.cut <= length(patch_id)]
-  patched[tcut] <- patch_B[tcut]
-  return(patched)
+add_overlap_to_list <- function(overlap_list, name, overlap, overlap_id){
+  rbind(
+    overlap_list,
+    data.frame(name = name, overlap = I(list(overlap)), overlap_id = I(list(overlap_id)))
+  )
 }
 
-assemble_opposite_patch <- function(mincut, patch_A, patch_B, patch_id){
-  opposite_patched <- patch_B
-  tcut <- mincut$t.cut[mincut$t.cut <= length(patch_id)]
-  opposite_patched[tcut] <- patch_A[tcut]
-  return(opposite_patched)
+assemble_overlap_origin <- function(mincut, label_B,  overlap_origin, overlap_id){
+  overlaped_origin <- overlap_origin
+  tcut <- mincut$t.cut[mincut$t.cut <= length(overlap_id)]
+  overlaped_origin[tcut] <- label_B
+  return(overlaped_origin)
 }
 
-# adding patches to the canvas
-update_canvas <- function(canvas, img_B, img_B_id, patched, patched_id){
-  canvas[img_B_id] <- img_B
-  canvas[patched_id] <- patched
+
+assemble_overlap <- function(mincut, overlap_A, overlap_B, overlap_id){
+  overlaped <- overlap_A
+  tcut <- mincut$t.cut[mincut$t.cut <= length(overlap_id)]
+  overlaped[tcut] <- overlap_B[tcut]
+  return(overlaped)
+}
+
+
+# adding overlapes to the canvas
+update_canvas <- function(canvas, patch_B, patch_B_id, overlaped, overlaped_id){
+  canvas[patch_B_id] <- patch_B
+  canvas[overlaped_id] <- overlaped
   return(canvas)
 }
 
-update_opposite_canvas <- function(opposite_canvas, opposite_patched, patched_id){
-  opposite_canvas[patched_id] <- opposite_patched
-  return(opposite_canvas)
+# adding overlapes to the canvas
+update_canvas_origin <- function(canvas_origin, label, patch_id, overlaped_origin = NULL, overlaped_id = NULL){
+  canvas_origin[patch_id] <- label
+  if(!is.null(overlaped_origin) & !is.null(overlaped_id)){
+    canvas_origin[overlaped_id] <- overlaped_origin
+  }
+  return(canvas_origin)
 }
-
 lines_seams <- function(cutset_global, canvas){
   n1_coord <- arrayInd(cutset_global[, 1], .dim = dim(canvas))
   n2_coord <- arrayInd(cutset_global[, 2], .dim = dim(canvas))
@@ -127,64 +139,64 @@ lines_seams <- function(cutset_global, canvas){
   }
 }
 
-check_oldseam_in_patch <- function(cut, patch_id){
-  (cut[1] %in% patch_id & cut[2] %in% patch_id)
+check_oldseam_in_overlap <- function(cut, overlap_id){
+  (cut[1] %in% overlap_id & cut[2] %in% overlap_id)
 }
 
-compute_oldseam_weight1 <- function(cut, patch, patch_id, canvas, canvas_origin, patch_list){
+compute_oldseam_weight1 <- function(cut, overlap, overlap_id, canvas, canvas_origin, overlap_list){
   val_cut1 <- canvas[cut[1]]
-  patch1 <- canvas_origin[cut[1]]
-  ipatch1 <- which(patch_list$name == patch1)
-  val_cut2 <- patch_list$patch[[ipatch1]][patch_list$patch_id[[ipatch1]] == cut[2]]
-  abs(val_cut1 - patch[patch_id == cut[1]]) +  abs(val_cut2 - patch[patch_id == cut[2]])
+  overlap1 <- canvas_origin[cut[1]]
+  ioverlap1 <- which(overlap_list$name == overlap1)
+  val_cut2 <- overlap_list$overlap[[ioverlap1]][overlap_list$overlap_id[[ioverlap1]] == cut[2]]
+  abs(val_cut1 - overlap[overlap_id == cut[1]]) +  abs(val_cut2 - overlap[overlap_id == cut[2]])
 }
 # debug(compute_oldseam_weight1)
-compute_oldseam_weight2 <- function(cut, patch, patch_id, canvas, canvas_origin, patch_list){
+compute_oldseam_weight2 <- function(cut, overlap, overlap_id, canvas, canvas_origin, overlap_list){
   val_cut2 <- canvas[cut[]]
-  patch2 <- canvas_origin[cut[2]]
-  ipatch2 <- which(patch_list$name == patch2)
-  val_cut1 <- patch_list$patch[[ipatch2]][patch_list$patch_id[[ipatch2]] == cut[1]]
-  abs(val_cut2 - patch[patch_id == cut[2]]) +  abs(val_cut1 - patch[patch_id == cut[1]])
+  overlap2 <- canvas_origin[cut[2]]
+  ioverlap2 <- which(overlap_list$name == overlap2)
+  val_cut1 <- overlap_list$overlap[[ioverlap2]][overlap_list$overlap_id[[ioverlap2]] == cut[1]]
+  abs(val_cut2 - overlap[overlap_id == cut[2]]) +  abs(val_cut1 - overlap[overlap_id == cut[1]])
 }
 # debug(compute_oldseam_weight1)
 
-add_oldcut <- function(cut, patch, patch_id, canvas, canvas_origin, patch_list, arcs){
-  patch_id_local <- matrix(
-    seq.int(length(patch_id)),
-    nrow = nrow(patch_id),
-    ncol = ncol(patch_id)
+add_oldcut <- function(cut, overlap, overlap_id, canvas, canvas_origin, overlap_list, arcs){
+  overlap_id_local <- matrix(
+    seq.int(length(overlap_id)),
+    nrow = nrow(overlap_id),
+    ncol = ncol(overlap_id)
   )
-  node1 <- patch_id_local[patch_id == cut[1]] 
-  node2 <- patch_id_local[patch_id == cut[2]]
+  node1 <- overlap_id_local[overlap_id == cut[1]] 
+  node2 <- overlap_id_local[overlap_id == cut[2]]
   iseam <- which(
     node1 == arcs[, 1] & node2 == arcs[, 2] |
       node1 == arcs[, 2] & node2 == arcs[, 1]
   )
   nodeseam_id <- max(arcs[, 1:2]) + 1
-  arcs[iseam, 1:2] <- c(length(patch_id) + 2, nodeseam_id)
+  arcs[iseam, 1:2] <- c(length(overlap_id) + 2, nodeseam_id)
   arcs <- rbind(
     arcs,
-    c(node1, nodeseam_id, compute_oldseam_weight1(cut = cut, patch = patch, patch_id = patch_id, canvas = canvas, canvas_origin = canvas_origin, patch_list = patch_list)),
-    c(node2, nodeseam_id, compute_oldseam_weight2(cut = cut, patch = patch, patch_id = patch_id, canvas = canvas, canvas_origin = canvas_origin, patch_list = patch_list))
+    c(node1, nodeseam_id, compute_oldseam_weight1(cut = cut, overlap = overlap, overlap_id = overlap_id, canvas = canvas, canvas_origin = canvas_origin, overlap_list = overlap_list)),
+    c(node2, nodeseam_id, compute_oldseam_weight2(cut = cut, overlap = overlap, overlap_id = overlap_id, canvas = canvas, canvas_origin = canvas_origin, overlap_list = overlap_list))
   )
   return(arcs)
 }
 
-update_graph_with_cuts <- function(cutset_global, patch, patch_id, canvas, canvas_origin, patch_list, arcs){
+update_graph_with_cuts <- function(cutset_global, overlap, overlap_id, canvas, canvas_origin, overlap_list, arcs){
   for(i in seq.int(nrow(cutset_global))){
-    if(check_oldseam_in_patch(cut = cutset_global[i, ], patch_id = patch_id)){
+    if(check_oldseam_in_overlap(cut = cutset_global[i, ], overlap_id = overlap_id)){
       arcs <- add_oldcut(
         cut = cutset_global[i, ],
-        patch = patch, patch_id = patch_id,
+        overlap = overlap, overlap_id = overlap_id,
         canvas = canvas, canvas_origin = canvas_origin,
-        patch_list = patch_list, arcs = arcs
+        overlap_list = overlap_list, arcs = arcs
       )
     }
   }
   return(arcs)
 }
 
-update_cutset_oneseamnode <- function(seam_node, arcs, cutset_local, cutset_global, patch_id){
+update_cutset_oneseamnode <- function(seam_node, arcs, cutset_local, cutset_global, overlap_id){
   cutset_local <- rearrange_node(cutset_local)
   print(dim(cutset_global))
   cutset_global <- rearrange_node(cutset_global)
@@ -199,7 +211,7 @@ update_cutset_oneseamnode <- function(seam_node, arcs, cutset_local, cutset_glob
   if(length(icutset_local) == 1){
     return(cutset_global)
   } 
-  edge_global_coord <- patch_id[edge_local_coord]
+  edge_global_coord <- overlap_id[edge_local_coord]
   icutset_global <- which(
     apply(cutset_global[, 1:2], 1, function(x) all(x == edge_global_coord))
   )
@@ -217,26 +229,26 @@ update_cutset_oneseamnode <- function(seam_node, arcs, cutset_local, cutset_glob
 }  
 
 
-remove_extra_nodes <- function(cutset_local, patch_id){
-  irm <- apply(cutset_local[, 1:2], 1, function(x) any(x > length(patch_id)))
+remove_extra_nodes <- function(cutset_local, overlap_id){
+  irm <- apply(cutset_local[, 1:2], 1, function(x) any(x > length(overlap_id)))
   return(cutset_local[!irm, ])
 }
 
-update_cutset_global <- function(arcs, cutset_local, cutset_global, patch_id) {
+update_cutset_global <- function(arcs, cutset_local, cutset_global, overlap_id) {
   seam_nodes <- sort(unique(unlist(arcs[, 1:2])))
-  seam_nodes <- seam_nodes[seam_nodes > (length(patch_id) + 2)] 
+  seam_nodes <- seam_nodes[seam_nodes > (length(overlap_id) + 2)] 
   for (node in seam_nodes){
     cutset_global <- update_cutset_oneseamnode(
       seam_node = node,
       arcs = arcs,
       cutset_local = cutset_local,
       cutset_global = cutset_global,
-      patch_id = patch_id
+      overlap_id = overlap_id
     )
   }
   cutset_global <- rbind(
     cutset_global,
-    local_to_global_arcs(remove_extra_nodes(cutset_local, patch_id), patch_id)
+    local_to_global_arcs(remove_extra_nodes(cutset_local, overlap_id), overlap_id)
   )
   return(cutset_global)
 }
