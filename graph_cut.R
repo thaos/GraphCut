@@ -269,21 +269,6 @@ prepare_for_new_patch <- function(xstart, ystart, xlength = 32, ylength = 32 , c
                         min(overlap_arrInd[, 2]):max(overlap_arrInd[, 2])]
   overlap_box_id <- canvas_id[min(overlap_arrInd[, 1]):max(overlap_arrInd[, 1]),
                         min(overlap_arrInd[, 2]):max(overlap_arrInd[, 2])]
-  check_overlap <- function(overlap, overlap_box){
-    if(length(overlap) < 9) {
-      stop("overlap area too small: should cover at least 9 pixels")
-      image(overlap_box, zlim = c(0, 256), col = grey.colors(256))
-    }
-    if(any(is.na(overlap_box))){
-      image(overlap_box, zlim = c(0, 256), col = grey.colors(256))
-      stop("overlap area is not a complete rectangle")
-    }
-    if(ncol(overlap_box) < 3 | nrow(overlap_box) < 3){
-      image(overlap_box, zlim = c(0, 256), col = grey.colors(256))
-      stop("one of the side of the rectangle overlap area is too small (lower than 3)")
-    }  
-  }
-  check_overlap(overlap, overlap_box)
   #find source node
   get_frame <- function(matrix){
     frame <- matrix(NA, ncol = ncol(matrix), nrow = nrow(matrix))
@@ -293,12 +278,23 @@ prepare_for_new_patch <- function(xstart, ystart, xlength = 32, ylength = 32 , c
     frame[, ncol(frame)] <- 1
     return(frame * matrix)
   }
+  adjacent_to_NA <- sapply(
+    overlap_id,
+    function(id){
+      any(is.na(
+        canvas[get_adjacent_gridpoints(id, ni = nrow(canvas), nj = ncol(canvas))]
+      ))
+    }
+  )
+  sink_id <- overlap_box_id[adjacent_to_NA]
   overlap_frame_id <- get_frame(overlap_box_id)
   overlap_frame_id <- overlap_frame_id[!is.na(overlap_frame_id)]
   patch_frame <- get_frame(patch)
   source_id <- patch_id[!is.na(patch_frame)]
   source_id <- source_id[source_id %in% overlap_frame_id]
-  if(length(source_id) == length(overlap_frame_id)){
+  source_id <- source_id[!(source_id %in% sink_id)]
+  stopifnot(length(source_id) > 0)
+  if(length(sink_id) == 0){
     xcenter <- nrow(overlap_box_id)/2 + 0.5
     xcenter <- unique(c(floor(xcenter), ceiling(xcenter)))
     print(xcenter)
@@ -311,8 +307,6 @@ prepare_for_new_patch <- function(xstart, ystart, xlength = 32, ylength = 32 , c
       centers, 1, 
       function(center) overlap_box_id[center[1], center[2]]
     )
-  } else {
-    sink_id <- overlap_frame_id[!(overlap_frame_id %in% source_id)]
   }
   source_id_local <- which(overlap_box_id %in% source_id)
   sink_id_local <- which(overlap_box_id %in% sink_id)
@@ -333,7 +327,7 @@ canvas_origin <- update_canvas_origin(canvas_origin = canvas_origin, label = "A"
 image(seq.int(nrow(canvas)), seq.int(ncol(canvas)), canvas, , zlim = c(0, 256), col = grey.colors(256))
 
 prep_newpatch_1 <-prepare_for_new_patch(
-  xstart = 30, ystart = 15,
+  xstart = 20, ystart = 15,
   xlength = 20, ylength = 10,
   canvas = canvas, canvas_id = canvas_id
 )
