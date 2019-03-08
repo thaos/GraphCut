@@ -24,11 +24,11 @@ image(canvas_id)
 patch_A <- img[1:32, 1:32]
 patch_A_id <- canvas_id[1:32, 1:32]
 canvas <- update_canvas(canvas = canvas, patch = patch_A, patch_id = patch_A_id)
-canvas_origin <- update_canvas_origin(canvas_origin = canvas_origin, label = "A", patch_id = patch_A_id)
+canvas_origin <- update_canvas_origin(canvas_origin = canvas_origin, label = "1", patch_id = patch_A_id)
 overlap_A <- canvas[25:32, 1:32]
 overlap_A_id <- canvas_id[25:32, 1:32]
 overlap_A_id_local <- matrix(1:length(overlap_A), ncol = ncol(overlap_A), nrow = nrow(overlap_A))
-overlap_list <- data.frame(name = "A", overlap = I(list(overlap_A)), overlap_id = I(list(overlap_A_id)))
+overlap_list <- data.frame(number = "1", overlap = I(list(overlap_A)), overlap_id = I(list(overlap_A_id)))
 
 plot(overlap_A, overlap_A_id_local)
 image(canvas, col = grey.colors(256), zlim = c(0, 256))
@@ -50,7 +50,7 @@ overlap_B <- patch_B[1:8, 1:32]
 diff_AB <- abs(overlap_A - overlap_B)
 
 
-overlap_list <- add_overlap_to_list(overlap_list = overlap_list, name = "B", overlap = overlap_B, overlap_id = overlap_A_id)
+overlap_list <- add_overlap_to_list(overlap_list = overlap_list, number = 2, overlap = overlap_B, overlap_id = overlap_A_id)
 
 # create overlap graph
 # alway the same for overlap of same size
@@ -94,13 +94,13 @@ overlaped <- assemble_overlap(mincut = mincut, overlap_A = overlap_A, overlap_B 
 
 overlap_origin <- overlap_A_id
 overlap_origin[] <- "A"
-overlaped_origin <- assemble_overlap_origin(mincut = mincut, label_B = "B", overlap_origin = overlap_origin, overlap_id = overlap_A_id)  
+overlaped_origin <- assemble_overlap_origin(mincut = mincut, label = "2", overlap_origin = overlap_origin, overlap_id = overlap_A_id)  
 image(matrix(as.numeric(factor(overlaped_origin)), ncol = ncol(canvas)))
 
 canvas <- update_canvas(canvas = canvas, patch = patch_B, patch_id = patch_B_id, overlaped = overlaped, overlaped_id = overlap_A_id) 
 
 
-canvas_origin <- update_canvas_origin(canvas_origin = canvas_origin, label = "B", patch_id = patch_B_id, overlaped_origin = overlaped_origin, overlaped_id = overlap_A_id)
+canvas_origin <- update_canvas_origin(canvas_origin = canvas_origin, label = "2", patch_id = patch_B_id, overlaped_origin = overlaped_origin, overlaped_id = overlap_A_id)
 
 par(mfrow = c(1, 1))
 image(
@@ -138,7 +138,7 @@ patch_C <- with(ij_scan[imin, ], img[i:(i+31), j:(j+31)])
 patch_C_id <- canvas_id[25:(25 + 31), 1:32]
 overlap_C <- patch_C[1:8, 1:32]
 
-overlap_list <- add_overlap_to_list(overlap_list = overlap_list, name = "C", overlap = overlap_C, overlap_id = overlap_A_id)
+overlap_list <- add_overlap_to_list(overlap_list = overlap_list, number = 3, overlap = overlap_C, overlap_id = overlap_A_id)
 
 diff_ABC <- abs(overlap_AB - overlap_C)
 par(mfrow = c(3, 1))
@@ -200,7 +200,7 @@ head(arcs_newoverlap_updated)
 
 
 overlaped <- assemble_overlap(mincut = mincut, overlap_A = overlap_AB, overlap_B = overlap_C, overlap_id = overlap_AB_id)
-overlaped_origin <- assemble_overlap_origin(mincut = mincut, label_B = "C", overlap_origin = overlaped_origin, overlap_id = overlap_A_id)  
+overlaped_origin <- assemble_overlap_origin(mincut = mincut, label = "C", overlap_origin = overlaped_origin, overlap_id = overlap_A_id)  
 par(mfrow = c(2, 2))
 image(overlap_AB, col = grey.colors(256), zlim = c(0, 256))
 image(overlap_C, col = grey.colors(256), zlim = c(0, 256))
@@ -221,7 +221,7 @@ cutset_global <- update_cutset_global(arcs_newoverlap_updated, cutset_local = cu
 
 
 canvas <- update_canvas(canvas = canvas, patch = patch_C, patch_id = patch_C_id, overlaped = overlaped, overlaped_id = overlap_AB_id) 
-canvas_origin <- update_canvas_origin(canvas_origin = canvas_origin, label = "C", patch_id = patch_C_id, overlaped_origin = overlaped_origin, overlaped_id = overlap_A_id)  
+canvas_origin <- update_canvas_origin(canvas_origin = canvas_origin, label = "3", patch_id = patch_C_id, overlaped_origin = overlaped_origin, overlaped_id = overlap_A_id)  
 
 image(
   x = seq.int(nrow(canvas)),
@@ -286,7 +286,7 @@ prepare_for_new_patch <- function(xstart, ystart, xlength = 32, ylength = 32 , c
       ))
     }
   )
-  sink_id <- overlap_box_id[adjacent_to_NA]
+  sink_id <- overlap_id[adjacent_to_NA]
   overlap_frame_id <- get_frame(overlap_box_id)
   overlap_frame_id <- overlap_frame_id[!is.na(overlap_frame_id)]
   patch_frame <- get_frame(patch)
@@ -308,43 +308,19 @@ prepare_for_new_patch <- function(xstart, ystart, xlength = 32, ylength = 32 , c
       function(center) overlap_box_id[center[1], center[2]]
     )
   }
-  source_id_local <- which(overlap_box_id %in% source_id)
-  sink_id_local <- which(overlap_box_id %in% sink_id)
+  par(mfrow = c(2, 1))
+  image(matrix(patch_id %in% source_id, ncol = ncol(patch_id)))
+  image(matrix(patch_id %in% sink_id, ncol = ncol(patch_id)))
+  source_id_local <- which(overlap_id %in% source_id)
+  sink_id_local <- which(overlap_id %in% sink_id)
   list(
     patch = patch, patch_id = patch_id,
-    overlap = overlap_box, overlap_id = overlap_box_id,
+    overlap = overlap, overlap_id = overlap_id,
     source_id = source_id, sink_id = sink_id,
     source_id_local = source_id_local, sink_id_local = sink_id_local
   ) 
 }
   
-canvas <- canvas_origin <- opposite_canvas <- matrix(NA, ncol = 32, nrow = 32*2 - 8)
-canvas_id <- matrix(1:length(canvas), ncol = ncol(canvas), nrow = nrow(canvas))
-patch_A <- img[1:32, 1:32]
-patch_A_id <- canvas_id[1:32, 1:32]
-canvas <- update_canvas(canvas = canvas, patch = patch_A, patch_id = patch_A_id)
-canvas_origin <- update_canvas_origin(canvas_origin = canvas_origin, label = "A", patch_id = patch_A_id)  
-image(seq.int(nrow(canvas)), seq.int(ncol(canvas)), canvas, , zlim = c(0, 256), col = grey.colors(256))
-
-prep_newpatch_1 <-prepare_for_new_patch(
-  xstart = 20, ystart = 15,
-  xlength = 20, ylength = 10,
-  canvas = canvas, canvas_id = canvas_id
-)
-
-# canvas[32, 20] <- NA
-# prepare_for_new_patch(
-#   xstart = 30, ystart = 15,
-#   xlength = 20, ylength = 10,
-#   canvas = canvas, canvas_id = canvas_id
-# )
-
-prep_newpatch_2 <- prepare_for_new_patch(
-  xstart = 10, ystart = 15,
-  xlength = 21, ylength = 10,
-  canvas = canvas, canvas_id = canvas_id
-)
-
 
 find_matching_patch <- function(patch_id, overlap, overlap_id, training_img){
   dim_patch <- dim(patch_id)
@@ -364,89 +340,194 @@ find_matching_patch <- function(patch_id, overlap, overlap_id, training_img){
   dmat[dmat == 0] <- Inf
   imin <- which.min(dmat)
   patch_new <- with(ij_scan[imin, ], img[i:(i + dim_patch[1] - 1), j:(j + dim_patch[2] - 1)])
-  overlap_new <- matrix(patch_new[ioverlap], nrow = nrow(overlap), ncol=ncol(overlap))
+  overlap_new <- patch_new[ioverlap]
   list(patch_new = patch_new, overlap_new = overlap_new)
 }
 
-matching_patch_2 <- find_matching_patch(
-  patch_id = prep_newpatch_2$patch_id,
-  overlap = prep_newpatch_2$overlap,
-  overlap_id = prep_newpatch_2$overlap_id,
-  training_img = img
+
+add_newpatch <- function(
+  xstart, ystart, xlength = 32, ylength = 32 ,
+  canvas, canvas_origin, canvas_id,
+  training_img,
+  overlap_list = NULL,  cutset_global = NULL
+){
+  preparations <- prepare_for_new_patch(
+    xstart = xstart, ystart = ystart,
+    xlength = xlength, ylength = ylength,
+    canvas = canvas, canvas_id = canvas_id
+  )
+  matching_patch <- find_matching_patch(
+    patch_id = preparations$patch_id,
+    overlap = preparations$overlap,
+    overlap_id = preparations$overlap_id,
+    training_img = training_img
+  )
+  patch_id <- preparations$patch_id
+  overlap_old <- preparations$overlap
+  overlap_id <- preparations$overlap_id
+  patch_new <- matching_patch$patch_new
+  overlap_new <- matching_patch$overlap_new
+  if(is.null(overlap_list)){
+    overlap_list <- data.frame(
+      number = 1,
+      overlap = I(list(overlap_old)),
+      overlap_id = I(list(overlap_id))
+    )
+  }
+  overlap_list <- add_overlap_to_list(
+    overlap_list = overlap_list, number = max(overlap_list$number) + 1,
+    overlap = overlap_new, overlap_id = overlap_id
+  )
+  
+  overlap_diff <- abs(overlap_old -  overlap_new)
+  arcs <- create_arcs(diff_overlap = overlap_diff, overlap_id = overlap_id, canvas = canvas)
+  arcs <- reorder_nodes(arcs)
+  graph <- graph_from_data_frame(arcs, directed = FALSE)
+  plot(graph, edge.width = exp(E(graph)$weight/max(E(graph)$weight)))
+  
+  arcs <- add_sink_and_source(
+    arcs = arcs, overlap_id = overlap_id,
+    source_nodes = preparations$source_id_local,
+    sink_nodes = preparations$sink_id_local
+  )
+  arcs <- reorder_nodes(arcs)
+  graph <- graph_from_data_frame(arcs, directed = FALSE)
+  plot(graph, edge.width = exp(E(graph)$weight/max(E(graph)$weight)))
+  
+  # Check if old seam in overlap
+  if(!is.null(cutset_global)){
+    cutset_global <- reorder_nodes(cutset_global)
+    arcs <- update_graph_with_cuts(
+      cutset_global = cutset_global,
+      overlap = overlap_new, overlap_id = overlap_id,
+      canvas = canvas, canvas_origin =  canvas_origin,
+      overlap_list = overlap_list, arcs = arcs
+    )
+    arcs <- reorder_nodes(arcs)
+  }
+  
+  # Solve MaxFlow / ST-MinCut
+  mincut <- findMinCut(
+    nodes = sort(unique(unlist(arcs[, 1:2]))) ,
+    arcs = as.matrix(arcs),
+    algorithm = "Ford-Fulkerson",
+    source.node = length(overlap_old) + 1,
+    sink.node = length(overlap_old) + 2,
+    directed = FALSE
+  )
+  
+  cutset_local <- mincut$cut.set
+  cutset_local <- rearrange_node(cutset_local)
+  cutset_local <- reorder_nodes(cutset_local)
+  # debug(update_cutset_oneseamnode)
+  if(is.null(cutset_global)){
+    cutset_global <- local_to_global_arcs(cutset_local, overlap_id)
+    cutset_global <- rearrange_node(cutset_global)
+  } else{
+    cutset_global <- update_cutset_global(
+      arcs = arcs, cutset_local = cutset_local,
+      cutset_global =  cutset_global, overlap_id = overlap_id
+    )
+  }
+  
+  overlaped <- assemble_overlap(
+    mincut = mincut, overlap_A = overlap_old,
+    overlap_B = overlap_new, overlap_id = overlap_id
+  )
+  overlaped_origin <- overlap_old
+  overlaped_origin[] <- canvas_origin[overlap_id]
+  overlaped_origin <- assemble_overlap_origin(
+    mincut = mincut, label = max(overlap_list$number) + 1,
+    overlap_origin = overlaped_origin, overlap_id = overlap_id
+  )  
+  canvas <- update_canvas(
+    canvas = canvas,
+    patch = patch_new, patch_id = patch_id,
+    overlaped = overlaped, overlaped_id = overlap_id
+  ) 
+  canvas_origin <- update_canvas_origin(
+    canvas_origin = canvas_origin,
+    label = max(overlap_list$number) + 1,
+    patch_id = patch_id,
+    overlaped_origin = overlaped_origin,
+    overlaped_id = overlap_id
+  )  
+  list(
+    canvas = canvas, canvas_origin = canvas_origin, canvas_id = canvas_id,
+    overlap_id = overlap_id, overlap_list = overlap_list,
+    cutset_global = cutset_global
+  )
+}
+canvas <- canvas_origin <- opposite_canvas <- matrix(NA, ncol = 32, nrow = 32*2 - 8)
+canvas_id <- matrix(1:length(canvas), ncol = ncol(canvas), nrow = nrow(canvas))
+patch_A <- img[1:32, 1:32]
+patch_A_id <- canvas_id[1:32, 1:32]
+canvas <- update_canvas(canvas = canvas, patch = patch_A, patch_id = patch_A_id)
+canvas_origin <- update_canvas_origin(canvas_origin = canvas_origin, label = "1", patch_id = patch_A_id)  
+image(seq.int(nrow(canvas)), seq.int(ncol(canvas)), canvas, , zlim = c(0, 256), col = grey.colors(256))
+
+
+new_canvas <- add_newpatch(
+  xstart = 20, ystart = 15,
+  xlength = 20, ylength = 10,
+  canvas = canvas, canvas_origin =  canvas_origin, canvas_id = canvas_id,
+  training_img = img, overlap_list = NULL, cutset_global = NULL
 )
-image(matching_patch_2$patch_new, zlim = c(0, 256), col = grey.colors(256))
-image(matching_patch_2$overlap_new, zlim = c(0, 256), col = grey.colors(256))
+image(1:nrow(canvas), 1:ncol(canvas), new_canvas$canvas, zlim = c(0, 256), col = grey.colors(256))
+lines_seams(cutset_global = new_canvas$cutset_global, canvas = new_canvas$canvas)
 
-matching_patch_1 <- find_matching_patch(
-  patch_id = prep_newpatch_1$patch_id,
-  overlap = prep_newpatch_1$overlap,
-  overlap_id = prep_newpatch_1$overlap_id,
-  training_img = img
+new_canvas2 <- add_newpatch(
+  xstart = 20, ystart = 23,
+  xlength = 20, ylength = 10,
+  canvas = new_canvas$canvas, canvas_origin =  new_canvas$canvas_origin, canvas_id = new_canvas$canvas_id,
+  training_img = img, overlap_list = new_canvas$overlap_list, cutset_global = new_canvas$cutset_global
 )
-image(matching_patch_1$patch_new, zlim = c(0, 256), col = grey.colors(256))
-image(matching_patch_1$overlap_new, zlim = c(0, 256), col = grey.colors(256))
+image(1:nrow(canvas), 1:ncol(canvas), new_canvas2$canvas, zlim = c(0, 256), col = grey.colors(256))
+lines_seams(cutset_global = new_canvas2$cutset_global, canvas = new_canvas2$canvas)
+abline(v = 19.5)
+abline(h = 22.5)
 
-patch_A <- prep_newpatch_1$patch
-patch_A_id <- prep_newpatch_1$patch_id
-overlap_A <- prep_newpatch_1$overlap
-overlap_A_id <- prep_newpatch_1$overlap_id
-patch_B <- matching_patch_1$patch_new
-patch_B_id <- patch_A_id
-overlap_B <- matching_patch_1$overlap_new
-overlap_list <- data.frame(name = "A", overlap = I(list(overlap_A)), overlap_id = I(list(overlap_A_id)))
-overlap_list <- add_overlap_to_list(overlap_list = overlap_list, name = "B", overlap = overlap_B, overlap_id = overlap_A_id)
-
-diff_AB <- abs(overlap_A -  overlap_B)
-arcs <- create_arcs(diff_overlap = diff_AB)
-graph <- graph_from_data_frame(arcs, directed = FALSE)
-plot(graph, edge.width = exp(E(graph)$weight/max(E(graph)$weight)))
-
-arcs <- add_sink_and_source(arcs, overlap_A_id, source_nodes = prep_newpatch_1$source_id_local, sink_nodes = prep_newpatch_1$sink_id_local)
-graph <- graph_from_data_frame(arcs, directed = FALSE)
-plot(graph, edge.width = exp(E(graph)$weight/max(E(graph)$weight)))
-
-# Solve MaxFlow / ST-MinCut
-mincut <- findMinCut(
-  nodes = seq.int(length(overlap_A_id) + 2) ,
-  arcs = as.matrix(arcs),
-  algorithm = "Ford-Fulkerson",
-  source.node = length(overlap_A_id) + 1,
-  sink.node = length(overlap_A_id) + 2,
-  directed = FALSE
+new_canvas3 <- add_newpatch(
+  xstart = 20, ystart = 14,
+  xlength = 20, ylength = 10,
+  canvas = new_canvas2$canvas, canvas_origin =  new_canvas2$canvas_origin, canvas_id = new_canvas2$canvas_id,
+  training_img = img, overlap_list = new_canvas2$overlap_list, cutset_global = new_canvas2$cutset_global
 )
-
-# keeping the seam cut cost
-cutset_local <- mincut$cut.set
-
-# expressing the seam cut with respect to the global node names
-cutset_local <- rearrange_node(cutset_local)
-cutset_global <- local_to_global_arcs(cutset_local, overlap_A_id)
-cutset_global <- rearrange_node(cutset_global)
-
-# getting the combined overlap
-overlaped <- assemble_overlap(mincut = mincut, overlap_A = overlap_A, overlap_B = overlap_B, overlap_id = overlap_A_id)
-
-
-overlap_origin <- overlap_A_id
-overlap_origin[] <- "A"
-overlaped_origin <- assemble_overlap_origin(mincut = mincut, label_B = "B", overlap_origin = overlap_origin, overlap_id = overlap_A_id)  
-image(matrix(as.numeric(factor(overlaped_origin)), ncol = ncol(overlap_A_id)))
-
-canvas <- update_canvas(canvas = canvas, patch = patch_B, patch_id = patch_B_id, overlaped = overlaped, overlaped_id = overlap_A_id) 
-canvas_origin <- update_canvas_origin(canvas_origin = canvas_origin, label = "B", patch_id = patch_B_id, overlaped_origin = overlaped_origin, overlaped_id = overlap_A_id)
-
-par(mfrow = c(1, 1))
-image(
-  x = seq.int(nrow(canvas)),
-  y = seq.int(ncol(canvas)),
-  z = matrix(as.numeric(factor(canvas_origin)), ncol = ncol(canvas))
+image(1:nrow(canvas), 1:ncol(canvas), new_canvas3$canvas, zlim = c(0, 256), col = grey.colors(256))
+lines_seams(cutset_global = new_canvas3$cutset_global, canvas = new_canvas3$canvas)
+abline(v = 19.5)
+abline(h = 22.5)
+      
+new_canvas4 <- add_newpatch(
+  xstart = 20, ystart = 4,
+  xlength = 20, ylength = 10,
+  canvas = new_canvas3$canvas, canvas_origin =  new_canvas3$canvas_origin, canvas_id = new_canvas3$canvas_id,
+  training_img = img, overlap_list = new_canvas3$overlap_list, cutset_global = new_canvas3$cutset_global
 )
+image(1:nrow(canvas), 1:ncol(canvas), new_canvas4$canvas, zlim = c(0, 256), col = grey.colors(256))
+lines_seams(cutset_global = new_canvas4$cutset_global, canvas = new_canvas4$canvas)
+abline(v = 19.5)
+abline(h = 22.5)
 
-par(mfrow = c(1, 1))
-image(
-  x = seq.int(nrow(canvas)),
-  y = seq.int(ncol(canvas)),
-  z = canvas,
-  col = grey.colors(256), zlim = c(0, 256)
+new_canvas5 <- add_newpatch(
+  xstart = 20, ystart = 1,
+  xlength = 20, ylength = 10,
+  canvas = new_canvas4$canvas, canvas_origin =  new_canvas4$canvas_origin, canvas_id = new_canvas4$canvas_id,
+  training_img = img, overlap_list = new_canvas4$overlap_list, cutset_global = new_canvas4$cutset_global
 )
-lines_seams(cutset_global = cutset_global, canvas = canvas)
+image(1:nrow(canvas), 1:ncol(canvas), new_canvas5$canvas, zlim = c(0, 256), col = grey.colors(256))
+lines_seams(cutset_global = new_canvas5$cutset_global, canvas = new_canvas5$canvas)
+abline(v = 19.5)
+abline(h = 22.5)
+
+new_canvas6 <- add_newpatch(
+  xstart = 30, ystart = 1,
+  xlength = 27, ylength = 32,
+  canvas = new_canvas5$canvas, canvas_origin =  new_canvas5$canvas_origin, canvas_id = new_canvas5$canvas_id,
+  training_img = img, overlap_list = new_canvas5$overlap_list, cutset_global = new_canvas5$cutset_global
+)
+image(1:nrow(canvas), 1:ncol(canvas), new_canvas6$canvas, zlim = c(0, 256), col = grey.colors(256))
+lines_seams(cutset_global = new_canvas6$cutset_global, canvas = new_canvas6$canvas)
+abline(v = 19.5)
+abline(h = 22.5)
+      

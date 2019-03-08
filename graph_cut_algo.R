@@ -19,23 +19,21 @@ get_adjacent_gridpoints(8*5, ni = 8, nj = 5)
 get_adjacent_gridpoints(8*5 - 7, ni = 8, nj = 5)
 get_adjacent_gridpoints(20, ni = 8, nj = 5)
 
-create_egdes <- function(idx, diff_overlap){
-  adj <- get_adjacent_gridpoints(idx, ni = nrow(diff_overlap), nj = ncol(diff_overlap))
-  # adj <- adj[adj > idx]
-  weight <- diff_overlap[idx] + diff_overlap[adj]
-  data.frame(from = idx, to = adj, weight = weight)
-}
-
-
-
-create_arcs <- function(diff_overlap){
-  arcs <- lapply(
-    1:length(diff_overlap),
-    create_egdes,
-    diff_overlap = diff_overlap
-  ) %>%
-    do.call(rbind, .) %>%
-    subset(from < to)
+create_arcs <- function(diff_overlap, overlap_id, canvas){
+  for(from in seq_along(diff_overlap)){
+    adj <- get_adjacent_gridpoints(
+      overlap_id[from], ni = nrow(canvas), nj = ncol(canvas)
+    )
+    adj <- adj[adj %in% overlap_id]
+    to <- vapply(adj, function(x) which(overlap_id == x), FUN.VALUE = 1)
+    weight <- abs(diff_overlap[from]) + abs(diff_overlap[to])
+    if(from == 1){
+      arcs <- data.frame(from = from, to = to, weight = weight)
+    } else {
+      arcs <- rbind(arcs, data.frame(from = from, to = to, weight = weight))
+    }
+  }
+  subset(arcs, from < to)
 }
 
 # Add Source and Sink#
@@ -75,17 +73,17 @@ local_to_global_arcs <- function(arcs_local, overlap_id){
   return(arcs_global)
 }
 
-add_overlap_to_list <- function(overlap_list, name, overlap, overlap_id){
+add_overlap_to_list <- function(overlap_list, number, overlap, overlap_id){
   rbind(
     overlap_list,
-    data.frame(name = name, overlap = I(list(overlap)), overlap_id = I(list(overlap_id)))
+    data.frame(number = number, overlap = I(list(overlap)), overlap_id = I(list(overlap_id)))
   )
 }
 
-assemble_overlap_origin <- function(mincut, label_B,  overlap_origin, overlap_id){
+assemble_overlap_origin <- function(mincut, label,  overlap_origin, overlap_id){
   overlaped_origin <- overlap_origin
   tcut <- mincut$t.cut[mincut$t.cut <= length(overlap_id)]
-  overlaped_origin[tcut] <- label_B
+  overlaped_origin[tcut] <- label
   return(overlaped_origin)
 }
 
@@ -141,26 +139,22 @@ check_oldseam_in_overlap <- function(cut, overlap_id){
 compute_oldseam_weight1 <- function(cut, overlap, overlap_id, canvas, canvas_origin, overlap_list){
   val_cut1 <- canvas[cut[1]]
   overlap1 <- canvas_origin[cut[1]]
-  ioverlap1 <- which(overlap_list$name == overlap1)
+  ioverlap1 <- which(overlap_list$number == overlap1)
   val_cut2 <- overlap_list$overlap[[ioverlap1]][overlap_list$overlap_id[[ioverlap1]] == cut[2]]
   abs(val_cut1 - overlap[overlap_id == cut[1]]) +  abs(val_cut2 - overlap[overlap_id == cut[2]])
 }
 # debug(compute_oldseam_weight1)
 compute_oldseam_weight2 <- function(cut, overlap, overlap_id, canvas, canvas_origin, overlap_list){
-  val_cut2 <- canvas[cut[]]
+  val_cut2 <- canvas[cut[2]]
   overlap2 <- canvas_origin[cut[2]]
-  ioverlap2 <- which(overlap_list$name == overlap2)
+  ioverlap2 <- which(overlap_list$number == overlap2)
   val_cut1 <- overlap_list$overlap[[ioverlap2]][overlap_list$overlap_id[[ioverlap2]] == cut[1]]
   abs(val_cut2 - overlap[overlap_id == cut[2]]) +  abs(val_cut1 - overlap[overlap_id == cut[1]])
 }
 # debug(compute_oldseam_weight1)
 
 add_oldcut <- function(cut, overlap, overlap_id, canvas, canvas_origin, overlap_list, arcs){
-  overlap_id_local <- matrix(
-    seq.int(length(overlap_id)),
-    nrow = nrow(overlap_id),
-    ncol = ncol(overlap_id)
-  )
+  overlap_id_local <- seq.int(length(overlap_id))
   node1 <- overlap_id_local[overlap_id == cut[1]] 
   node2 <- overlap_id_local[overlap_id == cut[2]]
   iseam <- which(
@@ -197,6 +191,7 @@ update_cutset_oneseamnode <- function(seam_node, arcs, cutset_local, cutset_glob
   cutset_global <- rearrange_node(cutset_global)
   print(dim(cutset_global))
   arcs_with_seamnode <- subset(arcs, from == seam_node | to == seam_node)
+  stopifnot(nrow(arcs_with_seamnode) == 3)
   arcs_with_seamnode <- reorder_nodes(arcs_with_seamnode)                                   
   edge_local_coord <- arcs_with_seamnode[1:2, 1]
   # Case with a cut between the sink and  a seam node
