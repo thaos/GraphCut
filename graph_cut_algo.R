@@ -106,9 +106,11 @@ assemble_overlap <- function(mincut, overlap_A, overlap_B, overlap_id){
 
 
 # adding overlapes to the canvas
-update_canvas <- function(canvas, patch_B, patch_B_id, overlaped, overlaped_id){
-  canvas[patch_B_id] <- patch_B
-  canvas[overlaped_id] <- overlaped
+update_canvas <- function(canvas, patch, patch_id, overlaped = NULL, overlaped_id = NULL){
+  canvas[patch_id] <- patch
+  if(!is.null(overlaped) & !is.null(overlaped_id)){
+    canvas[overlaped_id] <- overlaped
+  }
   return(canvas)
 }
 

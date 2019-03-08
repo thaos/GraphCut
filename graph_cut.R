@@ -19,18 +19,19 @@ canvas <- canvas_origin <- opposite_canvas <- matrix(NA, ncol = 32, nrow = 32*2 
 canvas_id <- matrix(1:length(canvas), ncol = ncol(canvas), nrow = nrow(canvas))
 image(canvas_id)
 
-patch_A <- img[1:32, 1:32]
-canvas[1:32, 1:32] <- patch_A
-canvas_origin[1:32, 1:32] <- "A"
-image(canvas, col = grey.colors(256), zlim = c(0, 256))
 
+
+patch_A <- img[1:32, 1:32]
 patch_A_id <- canvas_id[1:32, 1:32]
+canvas <- update_canvas(canvas = canvas, patch = patch_A, patch_id = patch_A_id)
+canvas_origin <- update_canvas_origin(canvas_origin = canvas_origin, label = "A", patch_id = patch_A_id)
 overlap_A <- canvas[25:32, 1:32]
 overlap_A_id <- canvas_id[25:32, 1:32]
 overlap_A_id_local <- matrix(1:length(overlap_A), ncol = ncol(overlap_A), nrow = nrow(overlap_A))
-plot(overlap_A, overlap_A_id_local)
-
 overlap_list <- data.frame(name = "A", overlap = I(list(overlap_A)), overlap_id = I(list(overlap_A_id)))
+
+plot(overlap_A, overlap_A_id_local)
+image(canvas, col = grey.colors(256), zlim = c(0, 256))
 
 # search for image B by scanning
 ij_scan <- expand.grid(i = 1:(128 - 31), j = 1:(128 - 31))
@@ -96,9 +97,9 @@ overlap_origin[] <- "A"
 overlaped_origin <- assemble_overlap_origin(mincut = mincut, label_B = "B", overlap_origin = overlap_origin, overlap_id = overlap_A_id)  
 image(matrix(as.numeric(factor(overlaped_origin)), ncol = ncol(canvas)))
 
-canvas <- update_canvas(canvas = canvas, patch_B = patch_B, patch_B_id = patch_B_id, overlaped = overlaped, overlaped_id = overlap_A_id) 
+canvas <- update_canvas(canvas = canvas, patch = patch_B, patch_id = patch_B_id, overlaped = overlaped, overlaped_id = overlap_A_id) 
 
-canvas_origin <- update_canvas_origin(canvas_origin = canvas_origin, label = "A", patch_id = patch_A_id)
+
 canvas_origin <- update_canvas_origin(canvas_origin = canvas_origin, label = "B", patch_id = patch_B_id, overlaped_origin = overlaped_origin, overlaped_id = overlap_A_id)
 
 par(mfrow = c(1, 1))
@@ -219,7 +220,7 @@ lines_seams(cutset_global = cutset_global, canvas = canvas)
 cutset_global <- update_cutset_global(arcs_newoverlap_updated, cutset_local = cutset_local, cutset_global =  cutset_global, overlap_id = overlap_AB_id)
 
 
-canvas <- update_canvas(canvas = canvas, patch_B = patch_C, patch_B_id = patch_C_id, overlaped = overlaped, overlaped_id = overlap_AB_id) 
+canvas <- update_canvas(canvas = canvas, patch = patch_C, patch_id = patch_C_id, overlaped = overlaped, overlaped_id = overlap_AB_id) 
 canvas_origin <- update_canvas_origin(canvas_origin = canvas_origin, label = "C", patch_id = patch_C_id, overlaped_origin = overlaped_origin, overlaped_id = overlap_A_id)  
 
 image(
@@ -237,5 +238,10 @@ image(
 )
 lines_seams(cutset_global = cutset_global, canvas = canvas)
 
-
+check_patch_position <- function(xstart, ystart, xlength = 32, ylength = 32 , canvas, canvas_id){
+  patch <- canvas[seq(xstart, xstart + xlength - 1),  seq(xstart, xstart + xlength - 1)]
+  patch_id <- canvas[seq(xstart, xstart + xlength - 1),  seq(xstart, xstart + xlength - 1)]
+  overlap <- which
+}
+  
 
