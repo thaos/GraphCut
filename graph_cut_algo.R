@@ -26,15 +26,7 @@ create_egdes <- function(idx, diff_overlap){
   data.frame(from = idx, to = adj, weight = weight)
 }
 
-add_source_to_left <- function(overlap_id){
-  idx_source <- 1 + (seq.int(ncol(overlap_id)) - 1) * nrow(overlap_id)
-  idx_sink <-  seq.int(ncol(overlap_id)) * nrow(overlap_id) 
-  arcs <- rbind( 
-    data.frame(from = length(overlap_id) + 1, to = idx_source, weight = 10E6),
-    data.frame(from = length(overlap_id) + 2, to = idx_sink, weight = 10E6)
-  )
-  return(arcs)
-}
+
 
 create_arcs <- function(diff_overlap){
   arcs <- lapply(
@@ -47,10 +39,11 @@ create_arcs <- function(diff_overlap){
 }
 
 # Add Source and Sink#
-add_sink_and_source <- function(arcs, overlap_id, add_source = add_source_to_left){
-  arcs_with_ST <- rbind(
+add_sink_and_source <- function(arcs, overlap_id, source_nodes, sink_nodes){
+  rbind(
     arcs,
-    add_source(overlap_id)
+    data.frame(from = length(overlap_id) + 1, to = source_nodes, weight = 10E6),
+    data.frame(from = length(overlap_id) + 2, to = sink_nodes, weight = 10E6)
   )
 }
 
