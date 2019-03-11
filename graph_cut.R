@@ -105,3 +105,15 @@ image(1:nrow(canvas), 1:ncol(canvas), new_canvas6$canvas, zlim = c(0, 256), col 
 lines_seams(cutset_global = new_canvas6$cutset_global, canvas = new_canvas6$canvas)
 image(1:nrow(canvas), 1:ncol(canvas), matrix(as.numeric(new_canvas6$canvas_origin), ncol = ncol(canvas)), col = rainbow(nrow(new_canvas6$patch_list)))
 lines_seams(cutset_global = new_canvas6$cutset_global, canvas = new_canvas6$canvas)
+
+new_canvas7 <- add_newpatch(
+  xstart = 10, ystart = 5,
+  xlength = 16, ylength = 24,
+  canvas = new_canvas6$canvas, canvas_origin =  new_canvas6$canvas_origin, canvas_id = new_canvas6$canvas_id,
+  training_img = img, patch_list = new_canvas6$patch_list, cutset_global = new_canvas6$cutset_global
+)
+par(mfrow = c(2, 1))
+image(1:nrow(canvas), 1:ncol(canvas), new_canvas7$canvas, zlim = c(0, 256), col = grey.colors(256))
+lines_seams(cutset_global = new_canvas7$cutset_global, canvas = new_canvas6$canvas)
+image(1:nrow(canvas), 1:ncol(canvas), matrix(as.numeric(new_canvas7$canvas_origin), ncol = ncol(canvas)), col = rainbow(nrow(new_canvas7$patch_list)))
+lines_seams(cutset_global = new_canvas7$cutset_global, canvas = new_canvas7$canvas)

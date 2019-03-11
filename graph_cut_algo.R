@@ -118,7 +118,14 @@ lines_seams <- function(cutset_global, canvas){
   n2_coord <- arrayInd(cutset_global[, 2], .dim = dim(canvas))
   ncolors = 10
   # wcuts <- cut(cutset_global[, 3], breaks = quantile(cutset_global[,3], probs = seq(0, 1, length.out = ncolors + 1))) 
-  wcuts <- cut(cutset_global[, 3], breaks = ncolors) 
+  if(length(unique(cutset_global[, 3])) < ncolors){
+    ncolors <- length(unique(cutset_global[, 3]))
+  }
+  if(length(unique(cutset_global[, 3])) == 1){
+    wcuts <- rep(1, nrow(cutset_global))
+  } else {
+    wcuts <- cut(cutset_global[, 3], breaks = ncolors) 
+  }
   pts <- matrix(NA, ncol = 2, nrow = 2)
   for(i in seq.int(nrow(cutset_global))){
     if(n1_coord[i, 1]  == n2_coord[i, 1]){
